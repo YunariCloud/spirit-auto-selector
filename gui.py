@@ -45,7 +45,7 @@ DANGER_SOFT = "#3A1E22"
 
 
 def ui_font(size: int = 13, weight: str = "normal") -> ctk.CTkFont:
-    return ctk.CTkFont(family=FONT_FAMILY, size=size, weight=weight)
+    return ctk.CTkFont(family=FONT_FAMILY, size=size + 1, weight=weight)
 
 
 class QueueWriter(io.TextIOBase):
@@ -591,7 +591,7 @@ class SpriteApp:
             fg_color=LOG_BG,
             text_color="#B9C7DB",
             wrap="word",
-            font=ctk.CTkFont(family="Cascadia Mono", size=10),
+            font=ctk.CTkFont(family="Cascadia Mono", size=11),
         )
         self.log_text.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 16))
         self.log_text.configure(state="disabled")
