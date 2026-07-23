@@ -4,6 +4,8 @@ import argparse
 import ctypes
 from ctypes import wintypes
 import json
+import os
+import shutil
 import sys
 import threading
 import time
@@ -16,7 +18,13 @@ import numpy as np
 from PIL import ImageGrab
 
 
-ROOT = Path(__file__).resolve().parent
+BUNDLE_ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+IS_FROZEN = bool(getattr(sys, "frozen", False))
+ROOT = (
+    Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "SpiritAutoSelector"
+    if IS_FROZEN
+    else BUNDLE_ROOT
+)
 ASSETS = ROOT / "assets"
 CONFIG_PATH = ROOT / "config.json"
 DEBUG_DIR = ROOT / "debug"
@@ -96,12 +104,38 @@ def enable_dpi_awareness() -> None:
             pass
 
 
+def ensure_runtime_data() -> None:
+    """Copy bundled defaults to a persistent, writable directory on first run."""
+    if not IS_FROZEN:
+        return
+
+    ROOT.mkdir(parents=True, exist_ok=True)
+    bundled_config = BUNDLE_ROOT / "config.json"
+    if not CONFIG_PATH.exists():
+        if not bundled_config.exists():
+            raise RuntimeError("安装包中缺少默认配置 config.json")
+        shutil.copy2(bundled_config, CONFIG_PATH)
+
+    bundled_assets = BUNDLE_ROOT / "assets"
+    if not bundled_assets.exists():
+        raise RuntimeError("安装包中缺少默认识别模板 assets")
+    for source in bundled_assets.rglob("*"):
+        if not source.is_file():
+            continue
+        target = ASSETS / source.relative_to(bundled_assets)
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+
+
 def load_config() -> dict:
+    ensure_runtime_data()
     with CONFIG_PATH.open("r", encoding="utf-8") as file:
         return json.load(file)
 
 
 def load_image(name: str) -> np.ndarray:
+    ensure_runtime_data()
     path = ASSETS / name
     data = np.fromfile(path, dtype=np.uint8)
     image = cv2.imdecode(data, cv2.IMREAD_COLOR)
@@ -601,7 +635,7 @@ def make_debug_image(screen: np.ndarray, matches: list[Match]) -> np.ndarray:
 
 
 def save_debug(screen: np.ndarray, matches: list[Match], label: str) -> Path:
-    DEBUG_DIR.mkdir(exist_ok=True)
+    DEBUG_DIR.mkdir(parents=True, exist_ok=True)
     annotated = make_debug_image(screen, matches)
     path = DEBUG_DIR / f"{time.strftime('%Y%m%d-%H%M%S')}-{label}.png"
     cv2.imencode(".png", annotated)[1].tofile(path)

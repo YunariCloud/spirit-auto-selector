@@ -2,6 +2,16 @@
 
 这个工具在 Windows 桌面上识别一种或多种“未选中精灵”模板，点击全部匹配目标，然后翻到下一页。分页显示中斜杠两侧的数字字形相同时，工具会在处理完当前页后停止。
 
+## 下载 EXE（推荐）
+
+从 GitHub 仓库的 [Releases 页面](https://github.com/YunariCloud/spirit-auto-selector/releases)下载 `SpiritAutoSelector.exe`，双击即可运行，不需要安装 Python。首次运行会把默认配置和识别模板复制到：
+
+```text
+%LOCALAPPDATA%\SpiritAutoSelector
+```
+
+此目录中的配置和后来添加的精灵模板会永久保留。若目标游戏以管理员身份运行，请右键 EXE 并选择“以管理员身份运行”。发布版目前没有商业代码签名，Windows 首次启动时可能显示 SmartScreen 提示；请确认文件来自本项目的 GitHub Release。
+
 ## 运行环境
 
 - Windows 10 或 Windows 11
@@ -96,6 +106,8 @@ start.bat               推荐启动入口
 install-driver.bat      Interception 驱动安装入口
 detect-only.bat         命令行检测入口
 test_logic.py           核心逻辑单元测试
+SpiritAutoSelector.spec PyInstaller 单文件构建配置
+build.ps1               Windows 一键构建脚本
 ```
 
 ## 开发与测试
@@ -109,3 +121,15 @@ python -m venv .venv
 ```
 
 > 自动点击会真实控制鼠标。调试模板和阈值时请优先使用“仅检测（不点击）”。
+
+构建单文件 EXE：
+
+```powershell
+.\build.ps1
+```
+
+构建结果位于 `dist\SpiritAutoSelector.exe`。可用以下命令执行不打开界面的资源自检：
+
+```powershell
+.\dist\SpiritAutoSelector.exe --smoke-test
+```

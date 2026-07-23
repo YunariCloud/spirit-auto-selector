@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import queue
 import shutil
+import sys
 import threading
 import uuid
 
@@ -681,5 +682,17 @@ def main_gui() -> None:
     root.mainloop()
 
 
+def smoke_test() -> int:
+    config = main.load_config()
+    main.load_image("next_page.png")
+    main.load_image("pagination.png")
+    main.load_sprite_templates(config)
+    main.MouseClicker(mode="send_input")
+    main.MouseClicker(mode="interception", fallback_on_missing=True)
+    return 0
+
+
 if __name__ == "__main__":
+    if "--smoke-test" in sys.argv:
+        raise SystemExit(smoke_test())
     main_gui()

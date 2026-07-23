@@ -7,6 +7,12 @@ import main
 
 
 class DetectionTests(unittest.TestCase):
+    def test_source_mode_uses_project_data_directory(self) -> None:
+        self.assertFalse(main.IS_FROZEN)
+        self.assertEqual(main.ROOT, main.BUNDLE_ROOT)
+        self.assertTrue(main.CONFIG_PATH.is_file())
+        self.assertTrue(main.ASSETS.is_dir())
+
     def test_default_sprite_config_is_available(self) -> None:
         config = main.load_config()
         definitions = main.get_sprite_definitions(config)
