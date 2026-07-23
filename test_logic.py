@@ -19,6 +19,23 @@ class DetectionTests(unittest.TestCase):
         self.assertEqual(definitions[0].id, "default")
         self.assertEqual(main.selected_sprite_ids(config), ["default"])
 
+    def test_sprite_name_search_is_partial_case_insensitive(self) -> None:
+        definitions = [
+            main.SpriteDefinition("fire", "Fire Spirit", "a.png", "b.png", 0.8, 0.8),
+            main.SpriteDefinition("water", "水系精灵", "a.png", "b.png", 0.8, 0.8),
+            main.SpriteDefinition("storm", "Storm Bird", "a.png", "b.png", 0.8, 0.8),
+        ]
+        self.assertEqual(
+            [item.id for item in main.filter_sprite_definitions(definitions, " FIRE ")],
+            ["fire"],
+        )
+        self.assertEqual(
+            [item.id for item in main.filter_sprite_definitions(definitions, "精灵")],
+            ["water"],
+        )
+        self.assertEqual(main.filter_sprite_definitions(definitions, "missing"), [])
+        self.assertEqual(main.filter_sprite_definitions(definitions, ""), definitions)
+
     def test_duplicate_matches_from_multiple_sprite_templates_are_merged(self) -> None:
         config = main.load_config()
         first = main.load_sprite_templates(config, ["default"])[0]

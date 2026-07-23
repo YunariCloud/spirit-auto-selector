@@ -187,6 +187,7 @@ class SpriteApp:
         self.window_values: dict[str, int] = {}
         self.output_queue: queue.Queue = queue.Queue()
         self.stop_event = threading.Event()
+        self.sprite_search_var = tk.StringVar()
         self.running = False
 
         self._build_ui()
@@ -301,7 +302,7 @@ class SpriteApp:
 
         sprite_card = ctk.CTkFrame(main_panel, corner_radius=18, fg_color=CARD_BG, border_width=1, border_color=BORDER)
         sprite_card.grid(row=2, column=0, sticky="ew", pady=14)
-        sprite_card.configure(height=240)
+        sprite_card.configure(height=270)
         sprite_card.grid_propagate(False)
         sprite_card.grid_columnconfigure(0, weight=1)
         sprite_card.grid_rowconfigure(1, weight=1)
@@ -319,6 +320,37 @@ class SpriteApp:
             font=ui_font(11),
             text_color=MUTED,
         ).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        search_box = ctk.CTkFrame(title_row, fg_color="transparent")
+        search_box.grid(row=1, column=1, columnspan=2, sticky="e", pady=(4, 0))
+        self.sprite_search_entry = ctk.CTkEntry(
+            search_box,
+            textvariable=self.sprite_search_var,
+            width=210,
+            height=32,
+            corner_radius=9,
+            border_color=BORDER,
+            fg_color=SURFACE_BG,
+            font=ui_font(11),
+            placeholder_text="搜索精灵名称",
+        )
+        self.sprite_search_entry.pack(side="left")
+        self.sprite_search_clear = ctk.CTkButton(
+            search_box,
+            text="×",
+            width=32,
+            height=32,
+            corner_radius=9,
+            fg_color="transparent",
+            border_width=1,
+            border_color=BORDER,
+            text_color=MUTED,
+            hover_color=SURFACE_BG,
+            font=ui_font(15),
+            state="disabled",
+            command=lambda: self.sprite_search_var.set(""),
+        )
+        self.sprite_search_clear.pack(side="left", padx=(6, 0))
+        self.sprite_search_var.trace_add("write", self.on_sprite_search)
         self.sprite_list = ctk.CTkScrollableFrame(sprite_card, fg_color="transparent")
         self.sprite_list.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
         self.sprite_list.grid_columnconfigure(0, weight=1)
@@ -398,7 +430,19 @@ class SpriteApp:
             child.destroy()
         self.enabled_vars.clear()
         self.sprite_images.clear()
-        for row_index, sprite in enumerate(main.get_sprite_definitions(self.config)):
+        definitions = main.get_sprite_definitions(self.config)
+        visible_sprites = main.filter_sprite_definitions(
+            definitions, self.sprite_search_var.get()
+        )
+        if not visible_sprites:
+            keyword = self.sprite_search_var.get().strip()
+            ctk.CTkLabel(
+                self.sprite_list,
+                text=f"没有找到名称包含“{keyword}”的精灵",
+                font=ui_font(11),
+                text_color=MUTED,
+            ).grid(row=0, column=0, pady=24)
+        for row_index, sprite in enumerate(visible_sprites):
             row = ctk.CTkFrame(self.sprite_list, corner_radius=12, fg_color=SURFACE_BG, border_width=1, border_color=BORDER)
             row.grid(row=row_index, column=0, sticky="ew", pady=4)
             row.grid_columnconfigure(2, weight=1)
@@ -457,6 +501,11 @@ class SpriteApp:
                 checkbox.configure(state="disabled")
                 remove.configure(state="disabled")
         self.update_selected_count()
+
+    def on_sprite_search(self, *_args: str) -> None:
+        has_query = bool(self.sprite_search_var.get().strip())
+        self.sprite_search_clear.configure(state="normal" if has_query else "disabled")
+        self.refresh_sprites()
 
     def toggle_sprite(self, sprite_id: str) -> None:
         if self.enabled_vars[sprite_id].get():

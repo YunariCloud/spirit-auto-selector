@@ -188,6 +188,15 @@ def get_sprite_definitions(config: dict) -> list[SpriteDefinition]:
     return definitions
 
 
+def filter_sprite_definitions(
+    definitions: list[SpriteDefinition], query: str
+) -> list[SpriteDefinition]:
+    keyword = query.strip().casefold()
+    if not keyword:
+        return list(definitions)
+    return [item for item in definitions if keyword in item.name.casefold()]
+
+
 def selected_sprite_ids(config: dict, requested: list[str] | None = None) -> list[str]:
     definitions = get_sprite_definitions(config)
     known = {item.id for item in definitions}
