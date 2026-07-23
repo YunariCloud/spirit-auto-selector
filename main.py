@@ -30,30 +30,6 @@ CONFIG_PATH = ROOT / "config.json"
 DEBUG_DIR = ROOT / "debug"
 
 VK_ESCAPE = 0x1B
-MOUSEEVENTF_LEFTDOWN = 0x0002
-MOUSEEVENTF_LEFTUP = 0x0004
-
-ULONG_PTR = ctypes.c_ulonglong if ctypes.sizeof(ctypes.c_void_p) == 8 else ctypes.c_ulong
-
-
-class MOUSEINPUT(ctypes.Structure):
-    _fields_ = (
-        ("dx", wintypes.LONG),
-        ("dy", wintypes.LONG),
-        ("mouseData", wintypes.DWORD),
-        ("dwFlags", wintypes.DWORD),
-        ("time", wintypes.DWORD),
-        ("dwExtraInfo", ULONG_PTR),
-    )
-
-
-class INPUT_VALUE(ctypes.Union):
-    _fields_ = (("mi", MOUSEINPUT),)
-
-
-class INPUT(ctypes.Structure):
-    _anonymous_ = ("value",)
-    _fields_ = (("type", wintypes.DWORD), ("value", INPUT_VALUE))
 
 
 @dataclass(frozen=True)
@@ -285,43 +261,33 @@ def escape_pressed() -> bool:
     return bool(ctypes.windll.user32.GetAsyncKeyState(VK_ESCAPE) & 0x8000)
 
 
+def initialize_interception():
+    import interception
+
+    interception.auto_capture_devices(keyboard=False, mouse=True)
+    return interception
+
+
+def interception_driver_available() -> bool:
+    try:
+        initialize_interception()
+        return True
+    except Exception:
+        return False
+
+
 class MouseClicker:
-    """Handles mouse click operations using Interception driver or SendInput."""
+    """Handles mouse clicks exclusively through the Interception driver."""
 
-    def __init__(self, mode: str = "interception", fallback_on_missing: bool = True) -> None:
-        self.requested_mode = mode.lower()
-        self.fallback_on_missing = fallback_on_missing
-        self.active_mode = "send_input"
-        self._interception = None
-
-        if self.requested_mode == "interception":
-            try:
-                import interception
-
-                self._interception = interception
-                try:
-                    interception.auto_capture_devices(keyboard=False, mouse=True)
-                except Exception:
-                    pass
-                self.active_mode = "interception"
-                print("输入模式：Interception 驱动级鼠标输入")
-            except Exception as error:
-                err_msg = (
-                    f"初始化 Interception 驱动失败 ({error})。\n"
-                    "提示：请确保已在 Windows 系统中安装 Interception 驱动 (interception.sys)。\n"
-                    "安装步骤：下载 Interception 安装包，以管理员身份运行 install-interception.exe /install 并重启电脑。"
-                )
-                if self.fallback_on_missing:
-                    print(f"警告：{err_msg}")
-                    print("已自动降级为 Windows SendInput 模式。\n")
-                    self.active_mode = "send_input"
-                else:
-                    raise RuntimeError(
-                        f"{err_msg}\n（如需允许自动降级，请在 config.json 中设置 fallback_on_driver_missing: true）"
-                    ) from error
-        else:
-            self.active_mode = "send_input"
-            print("输入模式：Windows SendInput 模式")
+    def __init__(self) -> None:
+        try:
+            self._interception = initialize_interception()
+        except Exception as error:
+            raise RuntimeError(
+                "Interception 驱动未安装或尚未生效。"
+                "请完成驱动安装并重启 Windows 后再运行。"
+            ) from error
+        print("输入模式：Interception 驱动级鼠标输入")
 
     def click(self, hwnd: int, x: int, y: int) -> None:
         user32 = ctypes.windll.user32
@@ -329,36 +295,23 @@ class MouseClicker:
         user32.BringWindowToTop(hwnd)
         user32.SetForegroundWindow(hwnd)
 
-        if self.active_mode == "interception" and self._interception is not None:
-            user32.SetCursorPos(int(x), int(y))
+        user32.SetCursorPos(int(x), int(y))
+        time.sleep(0.02)
+        try:
+            self._interception.move_to(int(x), int(y))
             time.sleep(0.02)
-            try:
-                self._interception.move_to(int(x), int(y))
-                time.sleep(0.02)
-                self._interception.mouse_down("left")
-                time.sleep(0.03)
-                self._interception.mouse_up("left")
-                return
-            except Exception as error:
-                print(f"警告：Interception 驱动点击发生异常 ({error})，降级使用 SendInput。")
-
-        if not user32.SetCursorPos(int(x), int(y)):
-            raise RuntimeError("无法移动鼠标指针")
-        time.sleep(0.04)
-        inputs = (INPUT * 2)(
-            INPUT(type=0, mi=MOUSEINPUT(dwFlags=MOUSEEVENTF_LEFTDOWN)),
-            INPUT(type=0, mi=MOUSEINPUT(dwFlags=MOUSEEVENTF_LEFTUP)),
-        )
-        sent = int(user32.SendInput(2, ctypes.byref(inputs), ctypes.sizeof(INPUT)))
-        if sent != 2:
-            raise RuntimeError(f"Windows SendInput 只发送了 {sent}/2 个鼠标事件")
+            self._interception.mouse_down("left")
+            time.sleep(0.03)
+            self._interception.mouse_up("left")
+        except Exception as error:
+            raise RuntimeError(f"Interception 驱动点击失败：{error}") from error
 
 
 def click_screen(hwnd: int, x: int, y: int, clicker: MouseClicker | None = None) -> None:
     if clicker is not None:
         clicker.click(hwnd, x, y)
     else:
-        MouseClicker(mode="send_input").click(hwnd, x, y)
+        MouseClicker().click(hwnd, x, y)
 
 
 def check_failsafe(stop_event: threading.Event | None = None) -> None:
@@ -690,10 +643,9 @@ def run(
 
     clicker = None
     if not dry_run:
-        clicker = MouseClicker(
-            mode=str(config.get("input_mode", "interception")),
-            fallback_on_missing=bool(config.get("fallback_on_driver_missing", True)),
-        )
+        if str(config.get("input_mode", "interception")).lower() != "interception":
+            raise RuntimeError("本工具仅允许使用 Interception 驱动输入模式")
+        clicker = MouseClicker()
 
     pages_visited = 0
     total_selected = 0

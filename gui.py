@@ -19,6 +19,7 @@ from PIL import Image
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
+import install_driver
 import main
 
 
@@ -367,17 +368,15 @@ class SpriteApp:
             font=ui_font(9),
             text_color=MUTED,
         ).pack(anchor="w")
-        input_mode = str(self.config.get("input_mode", "interception"))
-        mode_text = "Interception 驱动" if input_mode == "interception" else "Windows SendInput"
         ctk.CTkLabel(
             mode_copy,
-            text=mode_text,
+            text="Interception 驱动",
             font=ui_font(11, "bold"),
             text_color=TEXT,
         ).pack(anchor="w", pady=(2, 0))
         ctk.CTkLabel(
             mode_card,
-            text="自动回退",
+            text="已连接",
             height=24,
             corner_radius=8,
             fg_color=SUCCESS_SOFT,
@@ -954,9 +953,88 @@ class SpriteApp:
 
 def main_gui() -> None:
     main.enable_dpi_awareness()
+    if not ensure_interception_driver():
+        return
     root = ctk.CTk()
     SpriteApp(root)
     root.mainloop()
+
+
+def ensure_interception_driver() -> bool:
+    if main.interception_driver_available():
+        return True
+
+    bootstrap = ctk.CTk()
+    bootstrap.withdraw()
+    should_install = messagebox.askokcancel(
+        "需要安装 Interception 驱动",
+        "未检测到可用的 Interception 驱动。\n\n"
+        "本工具不支持降级输入，必须安装驱动才能运行。"
+        "点击“确定”后会弹出 Windows 管理员授权窗口，"
+        "并从 Interception 官方 GitHub Release 下载和安装驱动。",
+        parent=bootstrap,
+    )
+    if not should_install:
+        bootstrap.destroy()
+        return False
+
+    bootstrap.title("正在安装 Interception 驱动")
+    bootstrap.geometry("500x190")
+    bootstrap.resizable(False, False)
+    bootstrap.configure(fg_color=APP_BG)
+    bootstrap.deiconify()
+    ctk.CTkLabel(
+        bootstrap,
+        text="正在安装 Interception 驱动",
+        font=ui_font(18, "bold"),
+        text_color=TEXT,
+    ).pack(pady=(30, 6))
+    ctk.CTkLabel(
+        bootstrap,
+        text="请在 Windows 授权窗口中选择“是”，安装期间请勿关闭程序。",
+        font=ui_font(10),
+        text_color=MUTED,
+    ).pack()
+    progress = ctk.CTkProgressBar(
+        bootstrap,
+        width=390,
+        height=4,
+        mode="indeterminate",
+        fg_color=INPUT_BG,
+        progress_color=ACCENT,
+    )
+    progress.pack(pady=26)
+    progress.start()
+    bootstrap.update()
+
+    exit_code = install_driver.run_elevated_installer()
+    progress.stop()
+    bootstrap.withdraw()
+
+    if exit_code == 0:
+        messagebox.showinfo(
+            "驱动安装完成",
+            "Interception 驱动已经安装。\n\n"
+            "必须重启 Windows 后驱动才会生效。"
+            "请保存其他工作并重启电脑，然后重新运行本工具。",
+            parent=bootstrap,
+        )
+    elif exit_code == install_driver.ERROR_CANCELLED:
+        messagebox.showerror(
+            "安装已取消",
+            "未获得管理员权限，无法安装 Interception 驱动。"
+            "本工具将退出，不会使用降级输入方案。",
+            parent=bootstrap,
+        )
+    else:
+        messagebox.showerror(
+            "驱动安装失败",
+            f"Interception 驱动安装失败，返回码：{exit_code}。\n\n"
+            f"安装日志目录：{install_driver.runtime_root() / 'debug' / 'interception_setup'}",
+            parent=bootstrap,
+        )
+    bootstrap.destroy()
+    return False
 
 
 def smoke_test() -> int:
@@ -964,12 +1042,14 @@ def smoke_test() -> int:
     main.load_image("next_page.png")
     main.load_image("pagination.png")
     main.load_sprite_templates(config)
-    main.MouseClicker(mode="send_input")
-    main.MouseClicker(mode="interception", fallback_on_missing=True)
+    if len(install_driver.INTERCEPTION_ZIP_SHA256) != 64:
+        raise RuntimeError("Interception 安装包 SHA-256 配置无效")
     return 0
 
 
 if __name__ == "__main__":
+    if "--install-interception-driver" in sys.argv:
+        raise SystemExit(install_driver.main())
     if "--smoke-test" in sys.argv:
         raise SystemExit(smoke_test())
     main_gui()

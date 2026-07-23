@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 import cv2
 import numpy as np
@@ -115,14 +116,26 @@ class DetectionTests(unittest.TestCase):
         np.testing.assert_array_equal(screen, original)
         self.assertFalse(np.array_equal(annotated, original))
 
-    def test_mouse_clicker_send_input_mode(self) -> None:
-        clicker = main.MouseClicker(mode="send_input")
-        self.assertEqual(clicker.active_mode, "send_input")
+    def test_interception_driver_detection_succeeds_when_capture_initializes(self) -> None:
+        fake_interception = mock.Mock()
+        with mock.patch.dict("sys.modules", {"interception": fake_interception}):
+            self.assertTrue(main.interception_driver_available())
+        fake_interception.auto_capture_devices.assert_called_once_with(
+            keyboard=False, mouse=True
+        )
 
-    def test_mouse_clicker_fallback_behavior(self) -> None:
-        clicker = main.MouseClicker(mode="interception", fallback_on_missing=True)
-        # Should fallback gracefully to send_input when kernel driver is absent
-        self.assertIn(clicker.active_mode, ("interception", "send_input"))
+    def test_interception_driver_detection_fails_without_working_driver(self) -> None:
+        fake_interception = mock.Mock()
+        fake_interception.auto_capture_devices.side_effect = RuntimeError("driver missing")
+        with mock.patch.dict("sys.modules", {"interception": fake_interception}):
+            self.assertFalse(main.interception_driver_available())
+
+    def test_mouse_clicker_never_falls_back_without_driver(self) -> None:
+        fake_interception = mock.Mock()
+        fake_interception.auto_capture_devices.side_effect = RuntimeError("driver missing")
+        with mock.patch.dict("sys.modules", {"interception": fake_interception}):
+            with self.assertRaisesRegex(RuntimeError, "Interception 驱动未安装"):
+                main.MouseClicker()
 
 
 if __name__ == "__main__":

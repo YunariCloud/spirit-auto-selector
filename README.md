@@ -10,7 +10,9 @@
 
 ## 下载 EXE（推荐）
 
-从 GitHub 仓库的 [Releases 页面](https://github.com/YunariCloud/spirit-auto-selector/releases)下载 `SpiritAutoSelector.exe`，双击即可运行，不需要安装 Python。首次运行会把默认配置和识别模板复制到：
+从 GitHub 仓库的 [Releases 页面](https://github.com/YunariCloud/spirit-auto-selector/releases)下载 `SpiritAutoSelector.exe`，双击即可运行，不需要安装 Python。程序启动时会检测 Interception 驱动；若驱动不可用，会阻止进入主界面并通过 Windows 管理员授权自动安装。安装完成后需要重启电脑。
+
+首次运行还会把默认配置和识别模板复制到：
 
 ```text
 %LOCALAPPDATA%\SpiritAutoSelector
@@ -21,7 +23,7 @@
 ## 运行环境
 
 - Windows 10 或 Windows 11
-- Python 3.10 或更高版本（首次启动时用于创建项目虚拟环境）
+- 直接运行 EXE 不需要 Python；从源码运行需要 Python 3.10 或更高版本
 - 游戏建议使用窗口化或无边框窗口模式
 - 网络连接（首次安装 Python 依赖和 Interception 驱动时需要）
 
@@ -29,7 +31,7 @@
 
 1. 建议把 Windows 显示缩放和游戏窗口大小保持为截图时的状态。
 2. 打开游戏背包页面，确保精灵、分页文字和下一页按钮都没有被其他窗口遮挡。
-3. 双击 `start.bat`，并在系统询问时允许管理员权限，以便游戏客户端接收模拟点击。首次运行会自动创建本地 Python 环境并安装依赖。
+3. 双击 `SpiritAutoSelector.exe`。若尚未安装 Interception 驱动，请按提示允许管理员权限并完成安装，然后重启电脑。源码模式可继续使用 `start.bat`。
 4. 在深色图形界面中选择游戏窗口，勾选需要处理的一种或多种精灵。列表会显示未选中模板的缩略图，默认勾选原来的“当前精灵”；模板较多时可使用名称搜索框实时筛选。
 5. 建议先点“仅检测（不点击）”。确认诊断截图正确后，再点“开始自动选择”。运行过程中不要移动或最小化游戏窗口。
 6. 随时按 `Esc`、点击界面的“停止”，或把鼠标移到整个桌面的左上角，即可紧急停止。
@@ -62,8 +64,8 @@
 
 `config.json` 中：
 
-- `input_mode`：鼠标输入模式。默认为 `"interception"`（驱动级模拟点击），也可设为 `"send_input"`（Windows API 点击）。
-- `fallback_on_driver_missing`：未安装 Interception 系统驱动时，是否自动降级为 SendInput 模式（默认 `true`）。
+- `input_mode`：固定为 `"interception"`（驱动级模拟点击），其他模式会被拒绝。
+- `fallback_on_driver_missing`：固定为 `false`；工具不提供 SendInput 降级方案。
 - `default_sprites`：命令行模式默认处理的精灵 ID 列表。
 - `sprites`：所有精灵模板配置；每项可分别设置名称、未选中模板、已选中模板和匹配阈值。
 - `thresholds.unselected`：未选中精灵匹配阈值。漏识别时可小幅降低，如从 `0.86` 改成 `0.82`；误识别时提高。
@@ -75,14 +77,18 @@
 
 ## Interception 驱动安装说明
 
-脚本默认配置为使用 **Interception 驱动级鼠标输入**。使用驱动级输入需要 Windows 系统已安装 `interception.sys` 内核驱动程序：
+工具强制使用 **Interception 驱动级鼠标输入**。启动时会实际尝试连接驱动；驱动未安装或尚未生效时不会进入主界面，也不会降级为 SendInput。
 
 ### 方法一：自动安装（推荐）
 
-双击项目根目录下的 **`install-driver.bat`**：
-1. 脚本会自动从网络下载 Interception 官方驱动包并解压；
-2. 自动调用 `install-interception.exe /install` 进行驱动注册；
-3. 安装成功后，**请重启一次电脑**，重启后驱动即可正常工作！
+直接运行 `SpiritAutoSelector.exe`：
+1. 工具发现驱动不可用后会提示安装；
+2. 确认 Windows 管理员授权；
+3. 工具只从 Interception 官方 GitHub Release 下载驱动，并校验安装包 SHA-256；
+4. 自动调用 `install-interception.exe /install`；
+5. 安装成功后重启电脑，再次运行工具。
+
+源码模式也可以双击项目根目录下的 `install-driver.bat`。
 
 ### 方法二：手动安装
 
@@ -93,7 +99,7 @@
    ```
 3. **重启电脑**：安装成功后重启电脑以生效驱动。
 
-> **注意**：若系统尚未安装驱动且 `config.json` 中 `fallback_on_driver_missing` 为 `true`，脚本会自动提示并降级使用 `SendInput` 模式运行。
+> **注意**：Interception 是必需组件。用户取消管理员授权、安装失败或安装后尚未重启时，工具会退出，不会使用任何降级输入方案。
 
 ## 当前模板的适用范围
 

@@ -3,7 +3,7 @@
   "max_pages": 200,
   "page_change_threshold": 0.35,
   "input_mode": "interception",
-  "fallback_on_driver_missing": true,
+  "fallback_on_driver_missing": false,
   "default_sprites": [
     "default"
   ],
