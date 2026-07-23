@@ -1,0 +1,32 @@
+{
+  "startup_countdown": 3,
+  "max_pages": 200,
+  "page_change_threshold": 0.35,
+  "input_mode": "interception",
+  "fallback_on_driver_missing": true,
+  "default_sprites": [
+    "default"
+  ],
+  "sprites": [
+    {
+      "id": "default",
+      "name": "当前精灵",
+      "unselected": "unselected.png",
+      "selected": "selected.png",
+      "thresholds": {
+        "unselected": 0.86,
+        "selected": 0.8
+      }
+    }
+  ],
+  "thresholds": {
+    "unselected": 0.86,
+    "selected": 0.80,
+    "next_page": 0.88,
+    "pagination_anchor": 0.84
+  },
+  "delays": {
+    "after_select": 0.45,
+    "after_page_turn": 1.0
+  }
+}
