@@ -26,17 +26,22 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 FONT_FAMILY = "Microsoft YaHei UI"
-APP_BG = ("#F3F6FB", "#090D14")
-SIDEBAR_BG = ("#111827", "#0D1420")
-CARD_BG = ("#FFFFFF", "#111925")
-SURFACE_BG = ("#F7F9FC", "#172130")
-LOG_BG = ("#F8FAFD", "#080D14")
-BORDER = ("#E4E9F2", "#243247")
-TEXT = ("#172033", "#ECF2FF")
-MUTED = ("#697386", "#8E9BB0")
-ACCENT = ("#625BF6", "#7772FF")
-ACCENT_HOVER = ("#5048E5", "#8B87FF")
-SUCCESS = ("#0C9368", "#39D9A5")
+APP_BG = "#080C13"
+SIDEBAR_BG = "#0C121D"
+CARD_BG = "#101824"
+SURFACE_BG = "#151F2D"
+INPUT_BG = "#0B111B"
+LOG_BG = "#080D14"
+BORDER = "#223044"
+TEXT = "#F1F5FA"
+MUTED = "#8391A6"
+ACCENT = "#4F8CFF"
+ACCENT_HOVER = "#6AA0FF"
+ACCENT_SOFT = "#172B4D"
+SUCCESS = "#38D39F"
+SUCCESS_SOFT = "#123429"
+DANGER = "#F97066"
+DANGER_SOFT = "#3A1E22"
 
 
 def ui_font(size: int = 13, weight: str = "normal") -> ctk.CTkFont:
@@ -175,8 +180,8 @@ class SpriteApp:
     def __init__(self, root: ctk.CTk) -> None:
         self.root = root
         self.root.title("精灵批量选择工具")
-        self.root.geometry("1100x820")
-        self.root.minsize(960, 740)
+        self.root.geometry("1180x850")
+        self.root.minsize(1040, 760)
         self.root.configure(fg_color=APP_BG)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -187,7 +192,6 @@ class SpriteApp:
         self.window_values: dict[str, int] = {}
         self.output_queue: queue.Queue = queue.Queue()
         self.stop_event = threading.Event()
-        self.sprite_search_var = tk.StringVar()
         self.running = False
 
         self._build_ui()
@@ -199,217 +203,334 @@ class SpriteApp:
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
 
-        sidebar = ctk.CTkFrame(self.root, width=218, corner_radius=0, fg_color=SIDEBAR_BG)
+        sidebar = ctk.CTkFrame(self.root, width=220, corner_radius=0, fg_color=SIDEBAR_BG)
         sidebar.grid(row=0, column=0, sticky="nsew")
         sidebar.grid_propagate(False)
 
         brand = ctk.CTkFrame(sidebar, fg_color="transparent")
-        brand.pack(fill="x", padx=20, pady=(28, 34))
+        brand.pack(fill="x", padx=22, pady=(28, 26))
         ctk.CTkLabel(
             brand,
-            text="✦",
-            width=42,
-            height=42,
-            corner_radius=13,
+            text="S",
+            width=44,
+            height=44,
+            corner_radius=14,
             fg_color=ACCENT,
-            text_color="#FFFFFF",
-            font=ui_font(20, "bold"),
+            text_color="#07101F",
+            font=ui_font(19, "bold"),
         ).pack(side="left")
         brand_text = ctk.CTkFrame(brand, fg_color="transparent")
-        brand_text.pack(side="left", padx=(11, 0))
+        brand_text.pack(side="left", padx=(12, 0))
         ctk.CTkLabel(
             brand_text,
-            text="SPIRIT  AUTO",
+            text="SPRITE FLOW",
             font=ui_font(9, "bold"),
-            text_color=("#9CA3AF", "#8290A6"),
+            text_color=ACCENT,
         ).pack(anchor="w")
         ctk.CTkLabel(
             brand_text,
-            text="精灵助手",
-            font=ui_font(20, "bold"),
-            text_color="#F8FAFC",
+            text="精灵选择器",
+            font=ui_font(18, "bold"),
+            text_color=TEXT,
         ).pack(anchor="w")
 
-        self._step(sidebar, "01", "选择窗口", "锁定游戏画面")
-        self._step(sidebar, "02", "选择精灵", "支持同时多选")
-        self._step(sidebar, "03", "开始任务", "自动识别与翻页")
+        ctk.CTkFrame(sidebar, height=1, fg_color=BORDER).pack(fill="x", padx=22, pady=(0, 22))
+        ctk.CTkLabel(
+            sidebar,
+            text="工作流程",
+            font=ui_font(10, "bold"),
+            text_color=MUTED,
+        ).pack(anchor="w", padx=24, pady=(0, 8))
+        self._step(sidebar, "01", "选择窗口", "锁定游戏客户区")
+        self._step(sidebar, "02", "筛选精灵", "搜索并选择模板")
+        self._step(sidebar, "03", "执行任务", "识别、点击与翻页")
 
-        tip = ctk.CTkFrame(sidebar, corner_radius=14, fg_color=("#1D2939", "#151F2D"), border_width=1, border_color=("#344054", "#253247"))
-        tip.pack(side="bottom", fill="x", padx=16, pady=18)
-        ctk.CTkLabel(tip, text="⌁  安全停止", font=ui_font(12, "bold"), text_color="#F8FAFC").pack(anchor="w", padx=14, pady=(13, 2))
+        tip = ctk.CTkFrame(sidebar, corner_radius=14, fg_color=SURFACE_BG)
+        tip.pack(side="bottom", fill="x", padx=18, pady=20)
         ctk.CTkLabel(
             tip,
-            text="按 Esc 或将鼠标移动到\n屏幕左上角。",
+            text="ESC  紧急停止",
+            font=ui_font(11, "bold"),
+            text_color=TEXT,
+        ).pack(anchor="w", padx=14, pady=(13, 3))
+        ctk.CTkLabel(
+            tip,
+            text="也可将鼠标快速移动到\n整个桌面的左上角",
             justify="left",
-            font=ui_font(11),
-            text_color="#98A2B3",
+            font=ui_font(10),
+            text_color=MUTED,
         ).pack(anchor="w", padx=14, pady=(0, 13))
 
         main_panel = ctk.CTkFrame(self.root, fg_color="transparent")
-        main_panel.grid(row=0, column=1, sticky="nsew", padx=30, pady=24)
+        main_panel.grid(row=0, column=1, sticky="nsew", padx=32, pady=26)
         main_panel.grid_columnconfigure(0, weight=1)
         main_panel.grid_rowconfigure(3, weight=1)
 
         header = ctk.CTkFrame(main_panel, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 18))
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 20))
         header_text = ctk.CTkFrame(header, fg_color="transparent")
         header_text.pack(side="left")
         ctk.CTkLabel(
             header_text,
-            text="AUTOMATION  /  DASHBOARD",
+            text="AUTOMATION WORKSPACE",
             font=ui_font(9, "bold"),
             text_color=ACCENT,
         ).pack(anchor="w")
         ctk.CTkLabel(
             header_text,
-            text="批量选择任务",
-            font=ui_font(25, "bold"),
+            text="精灵批量选择",
+            font=ui_font(27, "bold"),
             text_color=TEXT,
-        ).pack(anchor="w", pady=(2, 0))
+        ).pack(anchor="w", pady=(3, 0))
+        ctk.CTkLabel(
+            header_text,
+            text="配置目标窗口与识别模板，然后让任务自动运行",
+            font=ui_font(11),
+            text_color=MUTED,
+        ).pack(anchor="w", pady=(4, 0))
         self.status_label = ctk.CTkLabel(
             header,
-            text="  ●  就绪  ",
-            corner_radius=14,
-            fg_color=("#E9EEF6", "#182334"),
-            text_color=MUTED,
+            text="  ●  已就绪  ",
+            corner_radius=15,
+            fg_color=SUCCESS_SOFT,
+            text_color=SUCCESS,
             font=ui_font(11, "bold"),
-            height=30,
+            height=32,
         )
         self.status_label.pack(side="right")
 
-        setup = ctk.CTkFrame(main_panel, corner_radius=18, fg_color=CARD_BG, border_width=1, border_color=BORDER)
+        setup = ctk.CTkFrame(main_panel, corner_radius=18, fg_color=CARD_BG)
         setup.grid(row=1, column=0, sticky="ew")
         setup.grid_columnconfigure(0, weight=1)
-        self._section_title(setup, "目标窗口", "选择已经打开背包页面的游戏窗口", 0)
+        self._card_title(setup, "01", "目标窗口", "选择已经打开背包页面的游戏窗口")
         window_row = ctk.CTkFrame(setup, fg_color="transparent")
-        window_row.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 20))
+        window_row.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 18))
         window_row.grid_columnconfigure(0, weight=1)
         self.window_combo = ctk.CTkComboBox(
             window_row,
             state="readonly",
-            height=42,
-            corner_radius=10,
+            height=44,
+            corner_radius=11,
             border_color=BORDER,
-            fg_color=SURFACE_BG,
+            fg_color=INPUT_BG,
             button_color=ACCENT,
             button_hover_color=ACCENT_HOVER,
+            dropdown_fg_color=SURFACE_BG,
+            dropdown_hover_color=ACCENT_SOFT,
             font=ui_font(12),
             dropdown_font=ui_font(12),
         )
         self.window_combo.grid(row=0, column=0, sticky="ew")
-        self.refresh_button = ctk.CTkButton(window_row, text="↻  刷新窗口", width=118, height=42, corner_radius=10, font=ui_font(12, "bold"), fg_color=ACCENT, hover_color=ACCENT_HOVER, command=self.refresh_windows)
+        self.refresh_button = ctk.CTkButton(
+            window_row,
+            text="↻  更新列表",
+            width=122,
+            height=44,
+            corner_radius=11,
+            font=ui_font(11, "bold"),
+            fg_color=SURFACE_BG,
+            hover_color=ACCENT_SOFT,
+            border_width=1,
+            border_color=BORDER,
+            text_color=TEXT,
+            command=self.refresh_windows,
+        )
         self.refresh_button.grid(row=0, column=1, padx=(10, 0))
 
-        sprite_card = ctk.CTkFrame(main_panel, corner_radius=18, fg_color=CARD_BG, border_width=1, border_color=BORDER)
+        sprite_card = ctk.CTkFrame(main_panel, corner_radius=18, fg_color=CARD_BG)
         sprite_card.grid(row=2, column=0, sticky="ew", pady=14)
-        sprite_card.configure(height=270)
+        sprite_card.configure(height=250)
         sprite_card.grid_propagate(False)
         sprite_card.grid_columnconfigure(0, weight=1)
-        sprite_card.grid_rowconfigure(1, weight=1)
-        title_row = ctk.CTkFrame(sprite_card, fg_color="transparent")
-        title_row.grid(row=0, column=0, sticky="ew", padx=20, pady=(16, 10))
-        title_row.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(title_row, text="选择精灵", font=ui_font(17, "bold"), text_color=TEXT).grid(row=0, column=0, sticky="w")
-        self.selected_count_label = ctk.CTkLabel(title_row, text="已选 0", height=26, corner_radius=13, fg_color=("#EEECFF", "#282450"), text_color=ACCENT, font=ui_font(10, "bold"))
-        self.selected_count_label.grid(row=0, column=1, padx=(8, 10))
-        self.add_button = ctk.CTkButton(title_row, text="＋  添加模板", width=116, height=36, corner_radius=10, font=ui_font(12, "bold"), fg_color=ACCENT, hover_color=ACCENT_HOVER, command=self.add_sprite)
-        self.add_button.grid(row=0, column=2)
+        sprite_card.grid_rowconfigure(2, weight=1)
+        sprite_header = self._card_title(
+            sprite_card,
+            "02",
+            "精灵模板",
+            "搜索并勾选本次需要处理的目标",
+        )
+        sprite_actions = ctk.CTkFrame(sprite_header, fg_color="transparent")
+        sprite_actions.pack(side="right")
+        self.selected_count_label = ctk.CTkLabel(
+            sprite_actions,
+            text="已选 0",
+            height=30,
+            corner_radius=10,
+            fg_color=ACCENT_SOFT,
+            text_color=ACCENT,
+            font=ui_font(10, "bold"),
+        )
+        self.selected_count_label.pack(side="left", padx=(0, 8))
+        self.add_button = ctk.CTkButton(
+            sprite_actions,
+            text="＋  添加模板",
+            width=116,
+            height=36,
+            corner_radius=10,
+            font=ui_font(11, "bold"),
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            text_color="#07101F",
+            command=self.add_sprite,
+        )
+        self.add_button.pack(side="left")
+
+        search_box = ctk.CTkFrame(sprite_card, height=42, corner_radius=11, fg_color=INPUT_BG)
+        search_box.grid(row=1, column=0, sticky="ew", padx=20, pady=(0, 10))
+        search_box.grid_columnconfigure(1, weight=1)
         ctk.CTkLabel(
-            title_row,
-            text="可同时选择多个目标，重复识别只点击一次",
-            font=ui_font(11),
+            search_box,
+            text="⌕",
+            width=38,
+            font=ui_font(18),
             text_color=MUTED,
-        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
-        search_box = ctk.CTkFrame(title_row, fg_color="transparent")
-        search_box.grid(row=1, column=1, columnspan=2, sticky="e", pady=(4, 0))
+        ).grid(row=0, column=0, sticky="ns")
         self.sprite_search_entry = ctk.CTkEntry(
             search_box,
-            textvariable=self.sprite_search_var,
-            width=210,
-            height=32,
-            corner_radius=9,
-            border_color=BORDER,
-            fg_color=SURFACE_BG,
-            font=ui_font(11),
-            placeholder_text="搜索精灵名称",
+            height=40,
+            corner_radius=0,
+            border_width=0,
+            fg_color="transparent",
+            font=ui_font(12),
+            placeholder_text="输入精灵名称进行搜索…",
+            placeholder_text_color="#5F6D82",
         )
-        self.sprite_search_entry.pack(side="left")
+        self.sprite_search_entry.grid(row=0, column=1, sticky="ew")
+        self.sprite_search_entry.bind("<KeyRelease>", self.on_sprite_search)
         self.sprite_search_clear = ctk.CTkButton(
             search_box,
             text="×",
-            width=32,
-            height=32,
+            width=34,
+            height=30,
             corner_radius=9,
             fg_color="transparent",
-            border_width=1,
-            border_color=BORDER,
             text_color=MUTED,
             hover_color=SURFACE_BG,
             font=ui_font(15),
-            state="disabled",
-            command=lambda: self.sprite_search_var.set(""),
+            command=self.clear_sprite_search,
         )
-        self.sprite_search_clear.pack(side="left", padx=(6, 0))
-        self.sprite_search_var.trace_add("write", self.on_sprite_search)
+        self.sprite_search_clear.grid(row=0, column=2, padx=(4, 6), pady=5)
+        self.sprite_search_clear.grid_remove()
+        self.root.bind("<Control-f>", lambda _event: self.sprite_search_entry.focus_set())
         self.sprite_list = ctk.CTkScrollableFrame(sprite_card, fg_color="transparent")
-        self.sprite_list.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
+        self.sprite_list.grid(row=2, column=0, sticky="nsew", padx=14, pady=(0, 14))
         self.sprite_list.grid_columnconfigure(0, weight=1)
 
-        console_card = ctk.CTkFrame(main_panel, corner_radius=18, fg_color=CARD_BG, border_width=1, border_color=BORDER)
+        console_card = ctk.CTkFrame(main_panel, corner_radius=18, fg_color=CARD_BG)
         console_card.grid(row=3, column=0, sticky="nsew")
         console_card.grid_columnconfigure(0, weight=1)
         console_card.grid_rowconfigure(1, weight=1)
-        self._section_title(console_card, "运行日志", "识别进度和诊断信息会显示在这里", 0)
-        self.log_text = ctk.CTkTextbox(console_card, height=90, corner_radius=12, border_width=1, border_color=BORDER, fg_color=LOG_BG, text_color=TEXT, wrap="word", font=ctk.CTkFont(family="Cascadia Mono", size=11))
-        self.log_text.grid(row=1, column=0, sticky="nsew", padx=18, pady=(0, 12))
+        self._card_title(console_card, "03", "任务控制台", "查看运行进度、检测结果与异常信息")
+        self.log_text = ctk.CTkTextbox(
+            console_card,
+            height=82,
+            corner_radius=12,
+            border_width=0,
+            fg_color=LOG_BG,
+            text_color="#B9C7DB",
+            wrap="word",
+            font=ctk.CTkFont(family="Cascadia Mono", size=11),
+        )
+        self.log_text.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 12))
         self.log_text.configure(state="disabled")
-        self.progress = ctk.CTkProgressBar(console_card, height=3, progress_color=ACCENT)
-        self.progress.grid(row=2, column=0, sticky="ew", padx=18)
+        self.progress = ctk.CTkProgressBar(
+            console_card,
+            height=3,
+            fg_color=INPUT_BG,
+            progress_color=ACCENT,
+        )
+        self.progress.grid(row=2, column=0, sticky="ew", padx=20)
         self.progress.set(0)
 
         actions = ctk.CTkFrame(console_card, fg_color="transparent")
-        actions.grid(row=3, column=0, sticky="ew", padx=18, pady=16)
+        actions.grid(row=3, column=0, sticky="ew", padx=20, pady=16)
         self.detect_button = ctk.CTkButton(
             actions,
-            text="仅检测",
-            width=110,
+            text="◎  仅检测",
+            width=116,
             height=42,
-            fg_color="transparent",
+            corner_radius=10,
+            fg_color=SURFACE_BG,
+            hover_color=ACCENT_SOFT,
             border_width=1,
             border_color=BORDER,
-            font=ui_font(12, "bold"),
+            text_color=TEXT,
+            font=ui_font(11, "bold"),
             command=lambda: self.start(True),
         )
         self.detect_button.pack(side="left")
-        self.start_button = ctk.CTkButton(actions, text="▶  开始自动选择", width=164, height=42, corner_radius=10, font=ui_font(12, "bold"), fg_color=ACCENT, hover_color=ACCENT_HOVER, command=lambda: self.start(False))
+        self.start_button = ctk.CTkButton(
+            actions,
+            text="▶  开始自动选择",
+            width=168,
+            height=42,
+            corner_radius=10,
+            font=ui_font(11, "bold"),
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            text_color="#07101F",
+            command=lambda: self.start(False),
+        )
         self.start_button.pack(side="right")
         self.stop_button = ctk.CTkButton(
             actions,
             text="■  停止",
-            width=100,
+            width=104,
             height=42,
+            corner_radius=10,
             state="disabled",
-            font=ui_font(12, "bold"),
-            fg_color=("#AAB2C0", "#334155"),
-            hover_color=("#929BAA", "#42526A"),
+            font=ui_font(11, "bold"),
+            fg_color=DANGER_SOFT,
+            hover_color="#54272D",
+            text_color=DANGER,
             command=self.stop,
         )
         self.stop_button.pack(side="right", padx=(0, 10))
 
     def _step(self, parent: ctk.CTkFrame, number: str, title: str, subtitle: str) -> None:
-        row = ctk.CTkFrame(parent, fg_color="transparent")
-        row.pack(fill="x", padx=20, pady=10)
-        ctk.CTkLabel(row, text=number, width=36, height=36, corner_radius=12, fg_color=("#263449", "#192536"), text_color="#B9C5D8", font=ui_font(10, "bold")).pack(side="left")
+        row = ctk.CTkFrame(parent, height=58, corner_radius=12, fg_color="transparent")
+        row.pack(fill="x", padx=14, pady=3)
+        row.pack_propagate(False)
+        ctk.CTkLabel(
+            row,
+            text=number,
+            width=34,
+            height=34,
+            corner_radius=11,
+            fg_color=SURFACE_BG,
+            text_color=ACCENT,
+            font=ui_font(9, "bold"),
+        ).pack(side="left", padx=(10, 0))
         text = ctk.CTkFrame(row, fg_color="transparent")
         text.pack(side="left", padx=(11, 0))
-        ctk.CTkLabel(text, text=title, font=ui_font(12, "bold"), text_color="#F1F5F9").pack(anchor="w")
-        ctk.CTkLabel(text, text=subtitle, font=ui_font(10), text_color="#8290A6").pack(anchor="w", pady=(1, 0))
+        ctk.CTkLabel(text, text=title, font=ui_font(11, "bold"), text_color=TEXT).pack(anchor="w")
+        ctk.CTkLabel(text, text=subtitle, font=ui_font(9), text_color=MUTED).pack(anchor="w", pady=(2, 0))
 
-    def _section_title(self, parent: ctk.CTkFrame, title: str, subtitle: str, row: int) -> None:
+    def _card_title(
+        self,
+        parent: ctk.CTkFrame,
+        number: str,
+        title: str,
+        subtitle: str,
+    ) -> ctk.CTkFrame:
         box = ctk.CTkFrame(parent, fg_color="transparent")
-        box.grid(row=row, column=0, sticky="ew", padx=20, pady=(16, 10))
-        ctk.CTkLabel(box, text=title, font=ui_font(17, "bold"), text_color=TEXT).pack(anchor="w")
-        ctk.CTkLabel(box, text=subtitle, font=ui_font(11), text_color=MUTED).pack(anchor="w", pady=(2, 0))
+        box.grid(row=0, column=0, sticky="ew", padx=20, pady=(17, 13))
+        badge = ctk.CTkLabel(
+            box,
+            text=number,
+            width=34,
+            height=34,
+            corner_radius=10,
+            fg_color=ACCENT_SOFT,
+            text_color=ACCENT,
+            font=ui_font(9, "bold"),
+        )
+        badge.pack(side="left")
+        copy = ctk.CTkFrame(box, fg_color="transparent")
+        copy.pack(side="left", padx=(11, 0))
+        ctk.CTkLabel(copy, text=title, font=ui_font(15, "bold"), text_color=TEXT).pack(anchor="w")
+        ctk.CTkLabel(copy, text=subtitle, font=ui_font(10), text_color=MUTED).pack(anchor="w", pady=(1, 0))
+        return box
 
     def refresh_windows(self) -> None:
         previous = self.window_combo.get()
@@ -431,19 +552,24 @@ class SpriteApp:
         self.enabled_vars.clear()
         self.sprite_images.clear()
         definitions = main.get_sprite_definitions(self.config)
-        visible_sprites = main.filter_sprite_definitions(
-            definitions, self.sprite_search_var.get()
-        )
+        query = self.sprite_search_entry.get()
+        visible_sprites = main.filter_sprite_definitions(definitions, query)
         if not visible_sprites:
-            keyword = self.sprite_search_var.get().strip()
+            keyword = query.strip()
             ctk.CTkLabel(
                 self.sprite_list,
-                text=f"没有找到名称包含“{keyword}”的精灵",
+                text=f"没有找到“{keyword}”\n换个名称试试看",
                 font=ui_font(11),
                 text_color=MUTED,
-            ).grid(row=0, column=0, pady=24)
+                justify="center",
+            ).grid(row=0, column=0, pady=26)
         for row_index, sprite in enumerate(visible_sprites):
-            row = ctk.CTkFrame(self.sprite_list, corner_radius=12, fg_color=SURFACE_BG, border_width=1, border_color=BORDER)
+            row = ctk.CTkFrame(
+                self.sprite_list,
+                corner_radius=13,
+                fg_color=SURFACE_BG,
+                border_width=0,
+            )
             row.grid(row=row_index, column=0, sticky="ew", pady=4)
             row.grid_columnconfigure(2, weight=1)
             variable = tk.BooleanVar(value=sprite.id in self.enabled_ids)
@@ -455,13 +581,20 @@ class SpriteApp:
                 corner_radius=6,
                 fg_color=ACCENT,
                 hover_color=ACCENT_HOVER,
-                border_color=("#ADB7C8", "#526078"),
+                border_color="#53637A",
+                checkmark_color="#07101F",
                 variable=variable,
                 command=lambda item_id=sprite.id: self.toggle_sprite(item_id),
             )
-            checkbox.grid(row=0, column=0, rowspan=2, padx=(14, 5), pady=12)
-            thumbnail_box = ctk.CTkFrame(row, width=52, height=52, corner_radius=12, fg_color=("#E7E5FF", "#2B2855"))
-            thumbnail_box.grid(row=0, column=1, rowspan=2, padx=(4, 11), pady=8)
+            checkbox.grid(row=0, column=0, rowspan=2, padx=(15, 6), pady=12)
+            thumbnail_box = ctk.CTkFrame(
+                row,
+                width=54,
+                height=54,
+                corner_radius=12,
+                fg_color=INPUT_BG,
+            )
+            thumbnail_box.grid(row=0, column=1, rowspan=2, padx=(4, 12), pady=9)
             thumbnail_box.grid_propagate(False)
             try:
                 with Image.open(main.ASSETS / sprite.unselected) as source:
@@ -481,8 +614,8 @@ class SpriteApp:
                     text_color=ACCENT,
                     font=ui_font(15, "bold"),
                 ).place(relx=0.5, rely=0.5, anchor="center")
-            ctk.CTkLabel(row, text=sprite.name, font=ui_font(13, "bold"), text_color=TEXT).grid(row=0, column=2, sticky="sw", pady=(9, 0))
-            ctk.CTkLabel(row, text=f"TEMPLATE  ·  {sprite.id}", font=ui_font(9, "bold"), text_color=MUTED).grid(row=1, column=2, sticky="nw", pady=(0, 9))
+            ctk.CTkLabel(row, text=sprite.name, font=ui_font(12, "bold"), text_color=TEXT).grid(row=0, column=2, sticky="sw", pady=(11, 0))
+            ctk.CTkLabel(row, text=f"模板 ID  ·  {sprite.id}", font=ui_font(9), text_color=MUTED).grid(row=1, column=2, sticky="nw", pady=(1, 11))
             remove = ctk.CTkButton(
                 row,
                 text="×",
@@ -491,9 +624,8 @@ class SpriteApp:
                 corner_radius=10,
                 font=ui_font(18),
                 fg_color="transparent",
-                border_width=1,
-                border_color=BORDER,
                 text_color=MUTED,
+                hover_color=DANGER_SOFT,
                 command=lambda item_id=sprite.id: self.remove_sprite(item_id),
             )
             remove.grid(row=0, column=3, rowspan=2, padx=12)
@@ -502,10 +634,17 @@ class SpriteApp:
                 remove.configure(state="disabled")
         self.update_selected_count()
 
-    def on_sprite_search(self, *_args: str) -> None:
-        has_query = bool(self.sprite_search_var.get().strip())
-        self.sprite_search_clear.configure(state="normal" if has_query else "disabled")
+    def on_sprite_search(self, _event: tk.Event | None = None) -> None:
+        has_query = bool(self.sprite_search_entry.get().strip())
+        if has_query:
+            self.sprite_search_clear.grid()
+        else:
+            self.sprite_search_clear.grid_remove()
         self.refresh_sprites()
+
+    def clear_sprite_search(self) -> None:
+        self.sprite_search_entry.delete(0, "end")
+        self.on_sprite_search()
 
     def toggle_sprite(self, sprite_id: str) -> None:
         if self.enabled_vars[sprite_id].get():
@@ -516,7 +655,7 @@ class SpriteApp:
 
     def update_selected_count(self) -> None:
         if hasattr(self, "selected_count_label"):
-            self.selected_count_label.configure(text=f"  已选 {len(self.enabled_ids)}  ")
+            self.selected_count_label.configure(text=f"已选 {len(self.enabled_ids)}")
 
     def save_config(self) -> None:
         temp_path = main.CONFIG_PATH.with_suffix(".json.tmp")
@@ -670,10 +809,18 @@ class SpriteApp:
             self.set_status("正在停止", active=True)
 
     def set_status(self, text: str, active: bool = False) -> None:
+        if text == "已完成":
+            background, foreground = SUCCESS_SOFT, SUCCESS
+        elif text.startswith("已结束"):
+            background, foreground = DANGER_SOFT, DANGER
+        elif active:
+            background, foreground = ACCENT_SOFT, ACCENT
+        else:
+            background, foreground = SURFACE_BG, MUTED
         self.status_label.configure(
             text=f"  ●  {text}  ",
-            fg_color=("#E7E5FF", "#282450") if active else ("#E9EEF6", "#182334"),
-            text_color=ACCENT if active else MUTED,
+            fg_color=background,
+            text_color=foreground,
         )
 
     def set_running_controls(self, running: bool) -> None:
